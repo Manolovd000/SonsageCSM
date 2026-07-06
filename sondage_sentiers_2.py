@@ -1,150 +1,208 @@
 import streamlit as st
 import pandas as pd
-import os
-
-FILE = "reponses_sentiers.csv"
 
 st.set_page_config(page_title="Sondage Sentiers Mayotte", layout="wide")
 
-# Charger données
-if os.path.exists(FILE):
-    df = pd.read_csv(FILE)
-else:
-    df = pd.DataFrame()
-
+# -----------------------------
 # TITRE
+# -----------------------------
 st.title("Sondage – Sentiers, itinéraires et chemins de Mayotte")
 st.subheader("Contribution à la structuration d’une commission des sentiers de Mayotte")
 
-st.divider()
+# Stockage temporaire
+if "responses" not in st.session_state:
+    st.session_state.responses = []
 
-# -----------------------
-# FORMULAIRE
-# -----------------------
-with st.form("formulaire"):
+# -----------------------------
+# 1. Profil de la structure
+# -----------------------------
+st.header("1. Profil de la structure")
 
-    st.header("1. Profil")
-    nom_structure = st.text_input("Nom de la structure")
+nom_structure = st.text_input("Nom de la structure")
 
-    type_structure = st.multiselect("Type de structure", [
-        "Collectivité","Service de l’État","Association",
-        "Propriétaire foncier","Entreprise",
-        "Gestionnaire","Fédération sportive","Autre"
-    ])
+type_structure = st.multiselect(
+    "Type de structure (plusieurs choix possibles)",
+    [
+        "Collectivité",
+        "Service de l’État",
+        "Association",
+        "Propriétaire foncier",
+        "Entreprise - Gestionnaire",
+        "Entreprise - Fédération sportive",
+        "Autre"
+    ]
+)
 
-    intervention = st.radio("Intervenez-vous dans la gestion ?", ["Oui", "Non"])
+intervention = st.radio(
+    "Intervenez-vous dans la gestion des sentiers ?",
+    ["Oui", "Non"]
+)
 
-    st.header("2. État des lieux")
-    etat = st.radio("État des sentiers", ["Très bon","Bon","Moyen","Mauvais","Très mauvais"])
-    gestion = st.radio("Gestion globale", ["Très satisfaisante","Satisfaisante","Moyenne","Insuffisante","Très insuffisante"])
+# -----------------------------
+# 2. État des lieux des sentiers
+# -----------------------------
+st.header("2. État des lieux des sentiers")
 
-    st.header("3. Connaissance")
-    connaissance = st.radio("Niveau de connaissance", ["Très bon","Bon","Moyen","Faible","Très faible"])
+etat_sentiers = st.radio(
+    "Comment évaluez-vous l’état global des sentiers à Mayotte ?",
+    ["Très bon", "Bon", "Moyen", "Mauvais", "Très mauvais"]
+)
 
-    usages = st.multiselect("Usages", [
-        "Randonnée","Trail","Agricole","Tourisme","VTT","Autre"
-    ])
+gestion_sentiers = st.radio(
+    "Comment évaluez-vous la gestion globale des sentiers à Mayotte ?",
+    ["Très satisfaisante", "Satisfaisante", "Moyenne", "Insuffisante", "Très insuffisante"]
+)
 
-    freins = st.multiselect("Freins", [
-        "Financiers","Coordination","Foncier","Données",
-        "Humains","Réglementaires","Entretien","Autre"
-    ])
+# -----------------------------
+# 3. Connaissance et gestion des sentiers
+# -----------------------------
+st.header("3. Connaissance et gestion des sentiers")
 
-    st.header("4. Outils")
-    sig = st.radio("Utilisez-vous un SIG ?", ["Oui","Non"])
-    partage = st.radio("Partage de données", ["Oui librement","Oui sous conditions","Non"])
+connaissance = st.radio(
+    "Comment évaluez-vous votre niveau de connaissance et de référencement des sentiers sur votre territoire ?",
+    ["Très bon", "Bon", "Moyen", "Faible", "Très faible"]
+)
 
-    st.header("5. Commission")
-    participation = st.radio("Souhaitez-vous participer ?", ["Oui","Non"])
+usages = st.multiselect(
+    "Quels sont les usages principaux des sentiers ? (plusieurs choix possibles)",
+    [
+        "Randonnée pédestre",
+        "Trail",
+        "Accès foncier/ agricole",
+        "Tourisme",
+        "VTT",
+        "Autre"
+    ]
+)
 
-    submit = st.form_submit_button("Envoyer")
+atouts = st.text_area("Quels sont vos atouts concernant la gestion des sentiers ?")
 
-# -----------------------
-# ENREGISTREMENT
-# -----------------------
-if submit:
-    new_data = pd.DataFrame([{
-        "structure": nom_structure,
-        "type": ", ".join(type_structure),
-        "intervention": intervention,
-        "etat": etat,
-        "gestion": gestion,
-        "connaissance": connaissance,
-        "usages": ", ".join(usages),
-        "freins": ", ".join(freins),
-        "sig": sig,
-        "partage": partage,
-        "participation": participation
-    }])
+freins = st.multiselect(
+    "Quels sont les principaux freins rencontrés ? (plusieurs choix possibles)",
+    [
+        "Manque de moyens financiers",
+        "Manque de coordination entre acteurs",
+        "Difficultés foncières",
+        "Manque de données / connaissance",
+        "Manque de moyens humains",
+        "Contraintes réglementaires",
+        "Difficulté d’entretien réguliers",
+        "Autre"
+    ]
+)
 
-    df = pd.concat([df, new_data], ignore_index=True)
-    df.to_csv(FILE, index=False)
+# -----------------------------
+# 4. Outils et données
+# -----------------------------
+st.header("4. Outils et données")
 
+sig = st.radio(
+    "Utilisez-vous des outils de cartographie ou SIG ?",
+    ["Oui", "Non"]
+)
+
+outils = st.text_area(
+    "Quels outils utilisez-vous pour connaître ou gérer les sentiers ?"
+)
+
+partage = st.radio(
+    "Seriez-vous disposé à partager vos données relatives aux sentiers (SIG ou autres) dans un cadre partenarial ?",
+    ["Oui librement", "Oui sous conditions", "Non"]
+)
+
+# -----------------------------
+# 6. Attentes et commission
+# -----------------------------
+st.header("6. Attentes et commission")
+
+attentes = st.text_area(
+    "Quelles sont vos attentes vis-à-vis de la création d’une commission des sentiers ?"
+)
+
+missions = st.multiselect(
+    "Selon vous, quelles missions devraient être prioritaires pour cette commission ?",
+    [
+        "Coordination des acteurs",
+        "Suivi et gestion des sentiers",
+        "Appui technique",
+        "Structuration des données",
+        "Recherche de financements",
+        "Autre"
+    ]
+)
+
+# -----------------------------
+# 7. Commission
+# -----------------------------
+st.header("7. Commission")
+
+participation = st.radio(
+    "Souhaitez-vous participer à cette commission ?",
+    ["Oui", "Non"]
+)
+
+contacts = st.text_area(
+    "Quelles structures ou contacts seraient pertinents à associer à cette commission ? (mail si possible)"
+)
+
+# -----------------------------
+# 8. Commentaires
+# -----------------------------
+st.header("8. Commentaires")
+
+commentaires = st.text_area(
+    "Remarques ou propositions complémentaires"
+)
+
+# -----------------------------
+# 9. Contact (facultatif)
+# -----------------------------
+st.header("9. Contact (facultatif)")
+
+structure_contact = st.text_input("Structure")
+nom_contact = st.text_input("Nom / Prénom")
+email = st.text_input("Adresse mail")
+telephone = st.text_input("Téléphone")
+
+# -----------------------------
+# Bouton de soumission
+# -----------------------------
+if st.button("Soumettre la réponse"):
+    data = {
+        "Nom structure": nom_structure,
+        "Type": type_structure,
+        "Intervention": intervention,
+        "Etat sentiers": etat_sentiers,
+        "Gestion sentiers": gestion_sentiers,
+        "Connaissance": connaissance,
+        "Usages": usages,
+        "Freins": freins,
+        "SIG": sig,
+        "Partage données": partage,
+        "Participation commission": participation
+    }
+
+    st.session_state.responses.append(data)
     st.success("Réponse enregistrée !")
 
-# -----------------------
-# 📊 ANALYSE TEMPS RÉEL
-# -----------------------
+# -----------------------------
+# VISUALISATION TEMPS RÉEL
+# -----------------------------
+st.header("📊 Visualisation des réponses en temps réel")
 
-st.divider()
-st.header("📊 Tableau de bord des résultats")
+if st.session_state.responses:
+    df = pd.DataFrame(st.session_state.responses)
 
-if not df.empty:
-
-    # KPI
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Nombre de réponses", len(df))
-    col2.metric("Acteurs gestionnaires (%)",
-                round((df["intervention"] == "Oui").mean()*100,1))
-    col3.metric("Favorables à la commission (%)",
-                round((df["participation"] == "Oui").mean()*100,1))
-
-    st.divider()
-
-    # -------- ETAT SENTIERS
-    st.subheader("État des sentiers")
-    etat_counts = df["etat"].value_counts()
-    st.bar_chart(etat_counts)
-
-    # -------- GESTION
-    st.subheader("Qualité de gestion")
-    gestion_counts = df["gestion"].value_counts()
-    st.bar_chart(gestion_counts)
-
-    # -------- CONNAISSANCE
-    st.subheader("Niveau de connaissance des sentiers")
-    connaissance_counts = df["connaissance"].value_counts()
-    st.bar_chart(connaissance_counts)
-
-    # -------- FREINS (important PDIPR)
-    st.subheader("Freins principaux")
-
-    freins_series = df["freins"].dropna().str.split(", ")
-    freins_exploded = freins_series.explode()
-    freins_counts = freins_exploded.value_counts()
-
-    st.bar_chart(freins_counts)
-
-    # -------- USAGES
-    st.subheader("Usages des sentiers")
-
-    usages_series = df["usages"].dropna().str.split(", ")
-    usages_exploded = usages_series.explode()
-    usages_counts = usages_exploded.value_counts()
-
-    st.bar_chart(usages_counts)
-
-    # -------- SIG
-    st.subheader("Utilisation SIG")
-    st.bar_chart(df["sig"].value_counts())
-
-    # -------- PARTAGE DONNEES
-    st.subheader("Partage de données")
-    st.bar_chart(df["partage"].value_counts())
-
-    # -------- TABLE COMPLETE
-    st.subheader("Table des réponses")
     st.dataframe(df)
 
+    st.subheader("Répartition de l’état des sentiers")
+    st.bar_chart(df["Etat sentiers"].value_counts())
+
+    st.subheader("Répartition de la gestion des sentiers")
+    st.bar_chart(df["Gestion sentiers"].value_counts())
+
+    st.subheader("Participation à la commission")
+    st.bar_chart(df["Participation commission"].value_counts())
+
 else:
-    st.info("Aucune réponse enregistrée pour le moment")
+    st.info("Aucune réponse pour le moment.")
