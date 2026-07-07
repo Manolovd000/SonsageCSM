@@ -286,6 +286,9 @@ if st.button("Soumettre la réponse"):
 # VISUALISATION DASHBOARD
 # -----------------------------
 
+import plotly.express as px
+
+
 st.header("📊 Tableau de bord - Sentiers de Mayotte")
 
 
@@ -297,6 +300,7 @@ if len(records) > 1:
     headers = records[0]
     rows = records[1:]
 
+    # Nettoyage des colonnes
     clean_headers = []
     used = set()
 
@@ -324,197 +328,113 @@ if len(records) > 1:
         columns=clean_headers
     )
 
-# -----------------------------
-# SYNTHESE
-# -----------------------------
 
-st.subheader("📌 Synthèse générale")
+    # -----------------------------
+    # INDICATEURS GENERAUX
+    # -----------------------------
 
-
-total_reponses = len(df)
-
-total_structures = (
-    df["Nom structure"].nunique()
-    if "Nom structure" in df.columns
-    else 0
-)
+    st.subheader("📌 Synthèse générale")
 
 
-taux_participation = (
-    (df["Participation commission"] == "Oui").mean()*100
-    if "Participation commission" in df.columns
-    else 0
-)
+    total_reponses = len(df)
 
-
-# Calcul des principales attentes de la commission
-
-top_attentes = "Non renseigné"
-
-if "Missions prioritaires" in df.columns:
-
-    missions_top = (
-        df["Missions prioritaires"]
-        .dropna()
-        .str.split(", ")
-        .explode()
-        .value_counts(normalize=True)
-        .head(3)
-        * 100
-    )
-
-    if len(missions_top) > 0:
-
-        top_attentes = "<br>".join(
-            [
-                f"{index} : {value:.0f}%"
-                for index, value in missions_top.items()
-            ]
-        )
-
-
-col1, col2, col3 = st.columns(3)
-
-col1.metric(
-    "Réponses reçues",
-    total_reponses
-)
-
-col2.metric(
-    "Structures représentées",
-    total_structures
-)
-
-col3.metric(
-    "Participation commission",
-    f"{taux_participation:.0f}%"
-)
-
-
-# -----------------------------
-# OBJECTIFS PRIORITAIRES
-# -----------------------------
-
-st.markdown("**Objectifs prioritaires de la commission**")
-
-
-if "Missions prioritaires" in df.columns:
-
-    missions_graph = (
-        df["Missions prioritaires"]
-        .dropna()
-        .str.split(", ")
-        .explode()
-        .str.strip()
-    )
-
-    missions_graph = missions_graph[
-        missions_graph != ""
-    ]
-
-
-    missions_graph = (
-        missions_graph
-        .value_counts(normalize=True)
-        .head(3)
-        .reset_index()
+    total_structures = (
+        df["Nom structure"]
+        .nunique()
+        if "Nom structure" in df.columns
+        else 0
     )
 
 
-    missions_graph.columns = [
-        "Objectif",
-        "Pourcentage"
-    ]
-
-
-    missions_graph["Pourcentage"] = (
-        missions_graph["Pourcentage"] * 100
+    participation = (
+        (df["Participation commission"] == "Oui")
+        .mean()*100
+        if "Participation commission" in df.columns
+        else 0
     )
 
 
-    fig = px.bar(
-        missions_graph,
-        x="Pourcentage",
-        y="Objectif",
-        orientation="h",
-        text="Pourcentage"
+    sig = (
+        (df["SIG"] == "Oui")
+        .mean()*100
+        if "SIG" in df.columns
+        else 0
     )
 
 
-    fig.update_traces(
-        texttemplate="%{text:.0f}%",
-        textposition="outside"
+    col1, col2, col3, col4 = st.columns(4)
+
+
+    col1.metric(
+        "Réponses reçues",
+        total_reponses
     )
 
-
-    fig.update_layout(
-        showlegend=False,
-        xaxis_title="Part des répondants (%)",
-        yaxis_title=""
+    col2.metric(
+        "Structures représentées",
+        total_structures
     )
 
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True
+    col3.metric(
+        "Participation commission",
+        f"{participation:.0f}%"
     )
 
-else:
-
-    st.info(
-        "Aucune donnée disponible pour les objectifs prioritaires."
-    )
-
-
-# -----------------------------
-# PROFIL STRUCTURES
-# -----------------------------
-
-st.divider()
-
-st.subheader("Profil des structures")
-
-
-if "Type" in df.columns:
-
-    type_data = (
-        df["Type"]
-        .str.split(", ")
-        .explode()
-        .value_counts()
-        .reset_index()
-    )
-
-    type_data.columns = [
-        "Type",
-        "Nombre"
-    ]
-
-
-    fig = px.bar(
-        type_data,
-        x="Nombre",
-        y="Type",
-        orientation="h",
-        title="Répartition des types de structures",
-        color="Type"
-    )
-
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True
+    col4.metric(
+        "Utilisation SIG",
+        f"{sig:.0f}%"
     )
 
 
 
     # -----------------------------
-    # ETAT SENTIERS
+    # PROFIL DES ACTEURS
     # -----------------------------
 
     st.divider()
 
-    st.subheader("Perception de l'état des sentiers")
+    st.subheader(" Profil des structures")
+
+
+    if "Type" in df.columns:
+
+        type_data = (
+            df["Type"]
+            .str.split(", ")
+            .explode()
+            .value_counts()
+            .reset_index()
+        )
+
+        type_data.columns = [
+            "Type",
+            "Nombre"
+        ]
+
+
+        fig = px.bar(
+            type_data,
+            x="Nombre",
+            y="Type",
+            orientation="h",
+            title="Répartition des types de structures"
+        )
+
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+
+
+
+    # -----------------------------
+    # ETAT DES SENTIERS
+    # -----------------------------
+
+    st.divider()
+
+    st.subheader(" Perception de l'état des sentiers")
 
 
     if "Etat sentiers" in df.columns:
@@ -535,8 +455,7 @@ if "Type" in df.columns:
             etat,
             names="Etat",
             values="Nombre",
-            title="Etat global des sentiers",
-            color="Etat"
+            title="Etat global des sentiers"
         )
 
 
@@ -548,7 +467,7 @@ if "Type" in df.columns:
 
 
     # -----------------------------
-    # GESTION
+    # GESTION DES SENTIERS
     # -----------------------------
 
     if "Gestion sentiers" in df.columns:
@@ -570,8 +489,7 @@ if "Type" in df.columns:
             gestion,
             x="Gestion",
             y="Nombre",
-            title="Perception de la gestion actuelle",
-            color="Gestion"
+            title="Perception de la gestion actuelle"
         )
 
 
@@ -583,17 +501,17 @@ if "Type" in df.columns:
 
 
     # -----------------------------
-    # FREINS
+    # FREINS PRINCIPAUX
     # -----------------------------
 
     st.divider()
 
-    st.subheader("Principaux freins identifiés")
+    st.subheader(" Principaux freins identifiés")
 
 
     if "Freins" in df.columns:
 
-        freins_data = (
+        freins = (
             df["Freins"]
             .str.split(", ")
             .explode()
@@ -602,19 +520,18 @@ if "Type" in df.columns:
         )
 
 
-        freins_data.columns = [
+        freins.columns = [
             "Frein",
             "Nombre"
         ]
 
 
         fig = px.bar(
-            freins_data,
+            freins,
             x="Nombre",
             y="Frein",
             orientation="h",
-            title="Classement des freins",
-            color="Frein"
+            title="Classement des freins"
         )
 
 
@@ -626,17 +543,17 @@ if "Type" in df.columns:
 
 
     # -----------------------------
-    # MISSIONS
+    # MISSIONS PRIORITAIRES
     # -----------------------------
 
     if "Missions prioritaires" in df.columns:
 
         st.divider()
 
-        st.subheader("Missions prioritaires pour la commission")
+        st.subheader(" Missions prioritaires pour la commission")
 
 
-        missions_data = (
+        missions = (
             df["Missions prioritaires"]
             .str.split(", ")
             .explode()
@@ -645,19 +562,18 @@ if "Type" in df.columns:
         )
 
 
-        missions_data.columns = [
+        missions.columns = [
             "Mission",
             "Nombre"
         ]
 
 
         fig = px.bar(
-            missions_data,
+            missions,
             x="Nombre",
             y="Mission",
             orientation="h",
-            title="Attentes prioritaires",
-            color="Mission"
+            title="Attentes prioritaires"
         )
 
 
@@ -669,16 +585,22 @@ if "Type" in df.columns:
 
 
     # -----------------------------
-    # TABLEAU
+    # DONNEES DETAILLEES
     # -----------------------------
 
     st.divider()
 
     st.subheader("📋 Données détaillées")
 
-
     st.dataframe(
         df,
         use_container_width=True,
         height=500
+    )
+
+
+else:
+
+    st.info(
+        "Aucune réponse disponible pour le moment."
     )
