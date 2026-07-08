@@ -343,7 +343,7 @@ def render_form() -> None:
         suffix,
         short_label="actions de gestion",
     )
-    atouts = st.text_area("Quels sont les atouts de vos sentiers ?", key=f"atouts_{suffix}")
+    atouts = st.text_area("Quels sont les atouts de la gestion de vos sentiers ?", key=f"atouts_{suffix}")
     freins, freins_autre = multiselect_with_autre(
         "Quels sont les principaux freins à la gestion de vos sentiers ?",
         FREINS_OPTIONS,
