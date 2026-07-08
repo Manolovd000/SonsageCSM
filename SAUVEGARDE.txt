@@ -19,8 +19,8 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = Credentials.from_service_account_file(
-    "credentials.json",
+creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
     scopes=scope
 )
 
@@ -52,7 +52,7 @@ def send_to_sheet(data):
         data["Partage de données"],
         data["Attentes"],
         ", ".join(data["Missions prioritaires"]),
-        data["Participation commission"],
+        data["Participation groupe de travail"],  # MODIFIÉ
         data["Contacts pertinents"],
         data["Commentaires"],
         data["Structure"],
@@ -68,7 +68,7 @@ def send_to_sheet(data):
 
 st.title("Sondage – Sentiers, itinéraires et chemins de Mayotte")
 st.subheader(
-    "Contribution à la structuration d’une commission des sentiers de Mayotte"
+    "Contribution à la structuration d’un groupe de travail dédié aux sentiers de Mayotte"
 )
 
 
@@ -186,62 +186,54 @@ partage = st.radio(
 
 
 # -----------------------------
-# 5. Attentes
+# 5. Attentes et groupe de travail
 # -----------------------------
 
-st.header("5. Attentes et commission")
+st.header("5. Attentes et groupe de travail")
 
-attentes = st.text_area("Attentes")
+attentes = st.text_area("Quelles sont vos attentes ?")
 
 missions = st.multiselect(
     "Missions prioritaires",
     [
         "Coordination des acteurs",
-        "Suivi et gestion des sentiers",
-        "Appui technique",
-        "Structuration des données",
-        "Recherche de financements",
+        "Entretien des sentiers",
+        "Valorisation touristique",
+        "Production de données",
+        "Animation territoriale",
         "Autre"
     ]
 )
 
 
 # -----------------------------
-# 6. Commission
+# 6. Groupe de travail
 # -----------------------------
 
-st.header("6. Commission")
+st.header("6. Groupe de travail")
 
 participation = st.radio(
-    "Participation",
-    ["Oui", "Non"]
+    "Souhaitez-vous participer au groupe de travail ?",
+    ["Oui", "Non", "Peut-être"]
 )
 
-contacts = st.text_area(
-    "Contacts pertinents"
-)
+contacts = st.text_area("Contacts pertinents")
+
+commentaires = st.text_area("Commentaires")
 
 
 # -----------------------------
-# 7. Commentaires
+# 7. Contact
 # -----------------------------
 
-st.header("7. Commentaires")
+st.header("7. Contact")
 
-commentaires = st.text_area(
-    "Remarques"
-)
+structure = st.text_input("Structure")
 
+nom = st.text_input("Nom")
 
-# -----------------------------
-# 8. Contact
-# -----------------------------
+mail = st.text_input("Mail")
 
-st.header("8. Contact")
-
-structure_contact = st.text_input("Structure")
-nom_contact = st.text_input("Nom / Prénom")
-email = st.text_input("Mail")
 telephone = st.text_input("Téléphone")
 
 
@@ -249,10 +241,9 @@ telephone = st.text_input("Téléphone")
 # ENVOI
 # -----------------------------
 
-if st.button("Soumettre la réponse"):
+if st.button("Envoyer"):
 
     data = {
-
         "Nom structure": nom_structure,
         "Type": type_structure,
         "Intervention": intervention,
@@ -267,27 +258,23 @@ if st.button("Soumettre la réponse"):
         "Partage de données": partage,
         "Attentes": attentes,
         "Missions prioritaires": missions,
-        "Participation commission": participation,
+        "Participation groupe de travail": participation,  # MODIFIÉ
         "Contacts pertinents": contacts,
         "Commentaires": commentaires,
-        "Structure": structure_contact,
-        "Nom": nom_contact,
-        "Mail": email,
+        "Structure": structure,
+        "Nom": nom,
+        "Mail": mail,
         "Téléphone": telephone
-
     }
 
     send_to_sheet(data)
 
-    st.success("Réponse envoyée 👍")
+    st.success("Réponse envoyée avec succès !")
 
 
 # -----------------------------
 # VISUALISATION DASHBOARD
 # -----------------------------
-
-import plotly.express as px
-
 
 st.header("📊 Tableau de bord - Sentiers de Mayotte")
 
@@ -300,7 +287,6 @@ if len(records) > 1:
     headers = records[0]
     rows = records[1:]
 
-    # Nettoyage des colonnes
     clean_headers = []
     used = set()
 
@@ -328,113 +314,197 @@ if len(records) > 1:
         columns=clean_headers
     )
 
+# -----------------------------
+# SYNTHESE
+# -----------------------------
+
+st.subheader("📌 Synthèse générale")
+
+
+total_reponses = len(df)
+
+total_structures = (
+    df["Nom structure"].nunique()
+    if "Nom structure" in df.columns
+    else 0
+)
+
+
+taux_participation = (
+    (df["Participation groupe de travail"] == "Oui").mean()*100
+    if "Participation groupe de travail" in df.columns
+    else 0
+)
+
+
+# Calcul des principales attentes du groupe de travail
+
+top_attentes = "Non renseigné"
+
+if "Missions prioritaires" in df.columns:
+
+    missions_top = (
+        df["Missions prioritaires"]
+        .dropna()
+        .str.split(", ")
+        .explode()
+        .value_counts(normalize=True)
+        .head(3)
+        * 100
+    )
+
+    if len(missions_top) > 0:
+
+        top_attentes = "<br>".join(
+            [
+                f"{index} : {value:.0f}%"
+                for index, value in missions_top.items()
+            ]
+        )
+
+
+col1, col2, col3 = st.columns(3)
+
+col1.metric(
+    "Réponses reçues",
+    total_reponses
+)
+
+col2.metric(
+    "Structures représentées",
+    total_structures
+)
+
+col3.metric(
+    "Participation au groupe de travail",
+    f"{taux_participation:.0f}%"
+)
+
+
+# -----------------------------
+# OBJECTIFS PRIORITAIRES
+# -----------------------------
+
+st.markdown("**Objectifs prioritaires du groupe de travail**")
+
+
+if "Missions prioritaires" in df.columns:
+
+    missions_graph = (
+        df["Missions prioritaires"]
+        .dropna()
+        .str.split(", ")
+        .explode()
+        .str.strip()
+    )
+
+    missions_graph = missions_graph[
+        missions_graph != ""
+    ]
+
+
+    missions_graph = (
+        missions_graph
+        .value_counts(normalize=True)
+        .head(3)
+        .reset_index()
+    )
+
+
+    missions_graph.columns = [
+        "Objectif",
+        "Pourcentage"
+    ]
+
+
+    missions_graph["Pourcentage"] = (
+        missions_graph["Pourcentage"] * 100
+    )
+
+
+    fig = px.bar(
+        missions_graph,
+        x="Pourcentage",
+        y="Objectif",
+        orientation="h",
+        text="Pourcentage",
+    )
+
+
+    fig.update_traces(
+        texttemplate="%{text:.0f}%",
+        textposition="outside"
+    )
+
+
+    fig.update_layout(
+        showlegend=False,
+        xaxis_title="Part des répondants (%)",
+        yaxis_title=""
+    )
+
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+else:
+
+    st.info(
+        "Aucune donnée disponible pour les objectifs prioritaires."
+    )
+
+
+# -----------------------------
+# PROFIL STRUCTURES
+# -----------------------------
+
+st.divider()
+
+st.subheader("Profil des structures")
+
+
+if "Type" in df.columns:
+
+    type_data = (
+        df["Type"]
+        .str.split(", ")
+        .explode()
+        .value_counts()
+        .reset_index()
+    )
+
+    type_data.columns = [
+        "Type",
+        "Nombre"
+    ]
+
+
+    fig = px.bar(
+        type_data,
+        x="Nombre",
+        y="Type",
+        orientation="h",
+        title="Répartition des types de structures",
+        color="Type"
+    )
+
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+
 
     # -----------------------------
-    # INDICATEURS GENERAUX
-    # -----------------------------
-
-    st.subheader("📌 Synthèse générale")
-
-
-    total_reponses = len(df)
-
-    total_structures = (
-        df["Nom structure"]
-        .nunique()
-        if "Nom structure" in df.columns
-        else 0
-    )
-
-
-    participation = (
-        (df["Participation commission"] == "Oui")
-        .mean()*100
-        if "Participation commission" in df.columns
-        else 0
-    )
-
-
-    sig = (
-        (df["SIG"] == "Oui")
-        .mean()*100
-        if "SIG" in df.columns
-        else 0
-    )
-
-
-    col1, col2, col3, col4 = st.columns(4)
-
-
-    col1.metric(
-        "Réponses reçues",
-        total_reponses
-    )
-
-    col2.metric(
-        "Structures représentées",
-        total_structures
-    )
-
-    col3.metric(
-        "Participation commission",
-        f"{participation:.0f}%"
-    )
-
-    col4.metric(
-        "Utilisation SIG",
-        f"{sig:.0f}%"
-    )
-
-
-
-    # -----------------------------
-    # PROFIL DES ACTEURS
+    # ETAT SENTIERS
     # -----------------------------
 
     st.divider()
 
-    st.subheader(" Profil des structures")
-
-
-    if "Type" in df.columns:
-
-        type_data = (
-            df["Type"]
-            .str.split(", ")
-            .explode()
-            .value_counts()
-            .reset_index()
-        )
-
-        type_data.columns = [
-            "Type",
-            "Nombre"
-        ]
-
-
-        fig = px.bar(
-            type_data,
-            x="Nombre",
-            y="Type",
-            orientation="h",
-            title="Répartition des types de structures"
-        )
-
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-
-
-    # -----------------------------
-    # ETAT DES SENTIERS
-    # -----------------------------
-
-    st.divider()
-
-    st.subheader(" Perception de l'état des sentiers")
+    st.subheader("Perception de l'état des sentiers")
 
 
     if "Etat sentiers" in df.columns:
@@ -455,7 +525,8 @@ if len(records) > 1:
             etat,
             names="Etat",
             values="Nombre",
-            title="Etat global des sentiers"
+            title="Etat global des sentiers",
+            color="Etat"
         )
 
 
@@ -467,7 +538,7 @@ if len(records) > 1:
 
 
     # -----------------------------
-    # GESTION DES SENTIERS
+    # GESTION
     # -----------------------------
 
     if "Gestion sentiers" in df.columns:
@@ -489,7 +560,8 @@ if len(records) > 1:
             gestion,
             x="Gestion",
             y="Nombre",
-            title="Perception de la gestion actuelle"
+            title="Perception de la gestion actuelle",
+            color="Gestion"
         )
 
 
@@ -501,17 +573,17 @@ if len(records) > 1:
 
 
     # -----------------------------
-    # FREINS PRINCIPAUX
+    # FREINS
     # -----------------------------
 
     st.divider()
 
-    st.subheader(" Principaux freins identifiés")
+    st.subheader("Principaux freins identifiés")
 
 
     if "Freins" in df.columns:
 
-        freins = (
+        freins_data = (
             df["Freins"]
             .str.split(", ")
             .explode()
@@ -520,18 +592,19 @@ if len(records) > 1:
         )
 
 
-        freins.columns = [
+        freins_data.columns = [
             "Frein",
             "Nombre"
         ]
 
 
         fig = px.bar(
-            freins,
+            freins_data,
             x="Nombre",
             y="Frein",
             orientation="h",
-            title="Classement des freins"
+            title="Classement des freins",
+            color="Frein"
         )
 
 
@@ -543,17 +616,17 @@ if len(records) > 1:
 
 
     # -----------------------------
-    # MISSIONS PRIORITAIRES
+    # MISSIONS
     # -----------------------------
 
     if "Missions prioritaires" in df.columns:
 
         st.divider()
 
-        st.subheader(" Missions prioritaires pour la commission")
+        st.subheader("Missions prioritaires pour le groupe de travail")
 
 
-        missions = (
+        missions_data = (
             df["Missions prioritaires"]
             .str.split(", ")
             .explode()
@@ -562,18 +635,19 @@ if len(records) > 1:
         )
 
 
-        missions.columns = [
+        missions_data.columns = [
             "Mission",
             "Nombre"
         ]
 
 
         fig = px.bar(
-            missions,
+            missions_data,
             x="Nombre",
             y="Mission",
             orientation="h",
-            title="Attentes prioritaires"
+            title="Attentes prioritaires",
+            color="Mission"
         )
 
 
@@ -585,22 +659,16 @@ if len(records) > 1:
 
 
     # -----------------------------
-    # DONNEES DETAILLEES
+    # TABLEAU
     # -----------------------------
 
     st.divider()
 
     st.subheader("📋 Données détaillées")
 
+
     st.dataframe(
         df,
         use_container_width=True,
         height=500
-    )
-
-
-else:
-
-    st.info(
-        "Aucune réponse disponible pour le moment."
     )
