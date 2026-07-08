@@ -8,6 +8,7 @@ import plotly.express as px
 import streamlit as st
 from google.oauth2.service_account import Credentials
 
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
@@ -30,8 +31,9 @@ TYPE_STRUCTURE_OPTIONS = [
     "Service de l'État",
     "Association",
     "Propriétaire foncier",
-    "Entreprise - Gestionnaire",
-    "Entreprise - Fédération sportive",
+    "Gestionnaire",
+    "Fédération sportive",
+    "Entreprise",
     "Autre",
 ]
 
@@ -65,7 +67,7 @@ GESTION_ACTIONS_OPTIONS = [
     "Collecte de données / cartographie",
     "Nettoyage et ramassage des déchets",
     "Sensibilisation et communication auprès du public",
-    "Valorisation touristique et animation",
+    "Valorisation du territoire",
     "Gestion des conflits d'usage",
     "Travaux de génie écologique (érosion, drainage)",
     "Aucune action de gestion actuellement",
@@ -75,7 +77,7 @@ GESTION_ACTIONS_OPTIONS = [
 MISSIONS_OPTIONS = [
     "Coordination des acteurs",
     "Entretien des sentiers",
-    "Valorisation touristique",
+    "Valorisation territoriale",
     "Production de données",
     "Animation territoriale",
     "Autre",
@@ -95,6 +97,68 @@ SHEET_COLUMNS = [
 ]
 
 st.set_page_config(page_title="Sondage Sentiers Mayotte", layout="wide")
+
+
+# =============================================================================
+# STYLE / PALETTE
+# =============================================================================
+
+# Palette douce et cohérente, inspirée de tons naturels (végétation, terre,
+# lagon) — utilisée pour l'ensemble des graphiques du dashboard, afin que
+# tous les visuels partagent la même identité visuelle.
+PALETTE = [
+    "#5C7A5C",  # vert sauge foncé
+    "#8FA998",  # vert sauge clair
+    "#C97B63",  # terracotta
+    "#D4B996",  # sable
+    "#6E8CA0",  # bleu lagon
+    "#A99985",  # taupe
+    "#E0B589",  # ocre clair
+    "#3E6259",  # teal profond
+]
+
+CHART_FONT = dict(family="Helvetica, Arial, sans-serif", size=13, color="#3E3A35")
+
+
+def inject_custom_css() -> None:
+    """Harmonise quelques éléments d'interface (bouton principal) avec la
+    palette utilisée dans les graphiques, pour une cohérence visuelle globale."""
+    st.markdown(
+        f"""
+        <style>
+        div.stButton > button:first-child {{
+            background-color: {PALETTE[0]};
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5em 1.6em;
+            font-weight: 500;
+        }}
+        div.stButton > button:first-child:hover {{
+            background-color: {PALETTE[7]};
+            color: white;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def style_figure(fig, title: str | None = None):
+    """Applique un style visuel cohérent (fond transparent, police douce,
+    grille discrète) à tous les graphiques Plotly du dashboard."""
+    fig.update_layout(
+        title=title,
+        font=CHART_FONT,
+        title_font=dict(size=16, color="#3E3A35"),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=10, r=10, t=50 if title else 20, b=10),
+        hoverlabel=dict(bgcolor="white", font_size=13, font_family=CHART_FONT["family"]),
+    )
+    fig.update_xaxes(showgrid=True, gridcolor="rgba(0,0,0,0.06)", zeroline=False)
+    fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.06)", zeroline=False)
+    return fig
 
 
 # =============================================================================
@@ -485,13 +549,42 @@ def render_form() -> None:
 # DASHBOARD
 # =============================================================================
 
-def horizontal_bar(series: pd.Series, value_name: str, label_name: str, title: str = None, as_percent: bool = False):
+def bar_chart(
+    series: pd.Series,
+    value_name: str,
+    label_name: str,
+    title: str | None = None,
+    as_percent: bool = False,
+    vertical: bool = False,
+) -> None:
+    """Diagramme en bâtons stylé (horizontal par défaut, vertical si demandé)
+    à partir d'une Series de comptages, avec la palette douce du dashboard."""
     data = series.reset_index()
     data.columns = [label_name, value_name]
-    fig = px.bar(data, x=value_name, y=label_name, orientation="h", title=title, text=value_name)
-    if as_percent:
-        fig.update_traces(texttemplate="%{text:.0f}%", textposition="outside")
-    fig.update_layout(showlegend=False, yaxis_title="")
+
+    if vertical:
+        fig = px.bar(
+            data, x=label_name, y=value_name, text=value_name,
+            color=label_name, color_discrete_sequence=PALETTE,
+        )
+        fig.update_yaxes(title="Pourcentage (%)" if as_percent else "Nombre de réponses")
+        fig.update_xaxes(title="")
+    else:
+        fig = px.bar(
+            data, x=value_name, y=label_name, orientation="h", text=value_name,
+            color=label_name, color_discrete_sequence=PALETTE,
+        )
+        fig.update_xaxes(title="Pourcentage (%)" if as_percent else "Nombre de réponses")
+        fig.update_yaxes(title="")
+
+    fig.update_traces(
+        texttemplate="%{text:.0f}%" if as_percent else "%{text}",
+        textposition="outside",
+        marker_line_width=0,
+        opacity=0.9,
+    )
+    fig.update_layout(showlegend=False, bargap=0.35)
+    style_figure(fig, title)
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -537,7 +630,8 @@ def render_missions_priority(df: pd.DataFrame) -> None:
         st.info("Aucune donnée disponible pour les objectifs prioritaires.")
         return
 
-    horizontal_bar(top, "Pourcentage", "Objectif", as_percent=True)
+    # 1/5 : vertical
+    bar_chart(top, "Pourcentage", "Objectif", as_percent=True, vertical=True)
 
 
 def render_profil_structures(df: pd.DataFrame) -> None:
@@ -553,11 +647,8 @@ def render_profil_structures(df: pd.DataFrame) -> None:
         st.info("Aucune donnée disponible sur le profil des structures.")
         return
 
-    data = counts.reset_index()
-    data.columns = ["Type", "Nombre"]
-    fig = px.bar(data, x="Nombre", y="Type", orientation="h",
-                 title="Répartition des types de structures", color="Type")
-    st.plotly_chart(fig, use_container_width=True)
+    # 2/5 : horizontal
+    bar_chart(counts, "Nombre", "Type", title="Répartition des types de structures", vertical=False)
 
 
 def render_etat_sentiers(df: pd.DataFrame) -> None:
@@ -570,7 +661,17 @@ def render_etat_sentiers(df: pd.DataFrame) -> None:
 
     data = df["Etat sentiers"].value_counts().reset_index()
     data.columns = ["Etat", "Nombre"]
-    fig = px.pie(data, names="Etat", values="Nombre", title="Etat global des sentiers", color="Etat")
+
+    fig = px.pie(
+        data, names="Etat", values="Nombre", hole=0.45,
+        color_discrete_sequence=PALETTE,
+    )
+    fig.update_traces(
+        textposition="inside",
+        textinfo="percent+label",
+        marker=dict(line=dict(color="white", width=2)),
+    )
+    style_figure(fig, "Etat global des sentiers")
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -578,10 +679,10 @@ def render_gestion(df: pd.DataFrame) -> None:
     if "Gestion sentiers" not in df.columns or df.empty:
         return
 
-    data = df["Gestion sentiers"].value_counts().reset_index()
-    data.columns = ["Gestion", "Nombre"]
-    fig = px.bar(data, x="Gestion", y="Nombre", title="Perception de la gestion actuelle", color="Gestion")
-    st.plotly_chart(fig, use_container_width=True)
+    counts = df["Gestion sentiers"].value_counts()
+
+    # 3/5 : vertical
+    bar_chart(counts, "Nombre", "Gestion", title="Perception de la gestion actuelle", vertical=True)
 
 
 def render_freins(df: pd.DataFrame) -> None:
@@ -597,10 +698,8 @@ def render_freins(df: pd.DataFrame) -> None:
         st.info("Aucune donnée disponible sur les freins identifiés.")
         return
 
-    data = counts.reset_index()
-    data.columns = ["Frein", "Nombre"]
-    fig = px.bar(data, x="Nombre", y="Frein", orientation="h", title="Classement des freins", color="Frein")
-    st.plotly_chart(fig, use_container_width=True)
+    # 4/5 : horizontal
+    bar_chart(counts, "Nombre", "Frein", title="Classement des freins", vertical=False)
 
 
 def render_missions_detail(df: pd.DataFrame) -> None:
@@ -614,10 +713,8 @@ def render_missions_detail(df: pd.DataFrame) -> None:
     if counts.empty:
         return
 
-    data = counts.reset_index()
-    data.columns = ["Mission", "Nombre"]
-    fig = px.bar(data, x="Nombre", y="Mission", orientation="h", title="Attentes prioritaires", color="Mission")
-    st.plotly_chart(fig, use_container_width=True)
+    # 5/5 : vertical
+    bar_chart(counts, "Nombre", "Mission", title="Attentes prioritaires", vertical=True)
 
 
 def render_table(df: pd.DataFrame) -> None:
@@ -659,9 +756,11 @@ def render_dashboard() -> None:
 # =============================================================================
 
 def main() -> None:
+    inject_custom_css()
     render_form()
     render_dashboard()
 
 
 if __name__ == "__main__":
     main()
+
