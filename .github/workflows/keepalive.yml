@@ -12,5 +12,17 @@ jobs:
     steps:
       - name: Ping Streamlit app
         run: |
-          curl --fail --max-time 60 \
-          "https://sonsagecsm-jayc6ngmmn7ddh2azigt3q.streamlit.app/?keepalive=1"
+          python - <<'PY'
+          import urllib.request
+
+          url = "https://sonsagecsm-jayc6ngmmn7ddh2azigt3q.streamlit.app/?keepalive=1"
+
+          try:
+              response = urllib.request.urlopen(url, timeout=60)
+              print("Status:", response.status)
+              print("URL finale:", response.geturl())
+              print("Streamlit accessible : OK")
+          except Exception as e:
+              print("Erreur:", repr(e))
+              raise
+          PY
