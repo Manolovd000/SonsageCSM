@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check Streamlit
+      - name: Test app
         run: |
-          curl -I --max-time 30 \
+          curl --max-redirs 0 -sS -D - -o /dev/null \
           "https://sonsagecsm-jayc6ngmmn7ddh2azigt3q.streamlit.app/"
