@@ -1,14 +1,16 @@
-name: Test Streamlit
+name: Keep Streamlit alive
 
 on:
+  schedule:
+    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 jobs:
-  test:
+  ping:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test app
+      - name: Ping Streamlit app
         run: |
-          curl --max-redirs 0 -sS -D - -o /dev/null \
-          "https://sonsagecsm-jayc6ngmmn7ddh2azigt3q.streamlit.app/"
+          curl -L --fail --max-time 60 \
+          "https://sonsagecsm-jayc6ngmmn7ddh2azigt3q.streamlit.app/?keepalive=1"
