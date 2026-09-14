@@ -1,28 +1,14 @@
-name: Keep Streamlit alive
+name: Test Streamlit
 
 on:
-  schedule:
-    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 jobs:
-  ping:
+  test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Ping Streamlit app
+      - name: Check Streamlit
         run: |
-          python - <<'PY'
-          import urllib.request
-
-          url = "https://sonsagecsm-jayc6ngmmn7ddh2azigt3q.streamlit.app/?keepalive=1"
-
-          try:
-              response = urllib.request.urlopen(url, timeout=60)
-              print("Status:", response.status)
-              print("URL finale:", response.geturl())
-              print("Streamlit accessible : OK")
-          except Exception as e:
-              print("Erreur:", repr(e))
-              raise
-          PY
+          curl -I --max-time 30 \
+          "https://sonsagecsm-jayc6ngmmn7ddh2azigt3q.streamlit.app/"
