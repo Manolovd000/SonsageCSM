@@ -1,3 +1,4 @@
+
 name: Keep Streamlit alive
 
 on:
@@ -13,4 +14,4 @@ jobs:
       - name: Ping Streamlit app
         run: |
           curl --max-redirs 0 --max-time 60 \
-          "https://sonsagecsm-jayc6ngmmn7ddh2azigt3q.streamlit.app/"
+            "https://sonsagecsm-jayc6ngmmn7ddh2azigt3q.streamlit.app/"
