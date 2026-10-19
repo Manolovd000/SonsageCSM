@@ -3,7 +3,7 @@ name: Keep Streamlit alive
 
 on:
   schedule:
-    - cron: "17,27,37,47,57 * * * *"
+    - cron: "3,13,23,33,43,53 * * * *"
   workflow_dispatch:
 
 jobs:
