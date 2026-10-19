@@ -9,7 +9,6 @@ on:
 jobs:
   ping:
     runs-on: ubuntu-latest
-
     steps:
       - name: Ping Streamlit app
         run: |
